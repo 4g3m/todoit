@@ -15,7 +15,7 @@ var sample = {
             'due_date': "11/12/17",
         }
     ],
-    todos_by_date: this.todos,
+    todos_by_date: {'06/18': 0},
     current_section: { title: 'All Todos', data: 2 },
 }
 
@@ -23,6 +23,7 @@ var sample = {
     constructor(){
       this.lists = {};
       this.lists['all'] = new TodoList('All Todos')
+      this.lists['completed'] = new TodoList('Completed')
       this.display = null;
       this.getTodos();
       this.context = {selected: this.lists.all.todos, current_section: {title: this.lists.all.name, data: this.lists.all.length}};
@@ -61,7 +62,7 @@ var sample = {
 
     objToTodoArgs(obj){
       const {id, title, day, month, year, completed, description} = obj
-      const arr = [id, title, day, month, year, description]
+      const arr = [id, title, day, month, year, completed, description]
       return arr;
     }
 
@@ -97,13 +98,54 @@ var sample = {
                 var vals = self.objToTodoArgs(json)
                 let todo = new Todo(...vals)
                 self.lists.all.addTodo(todo)
-                document.querySelector('form').reset()
-                self.display.renderAddForm(true)
+                self.display.renderForm(true)
                 self.refreshDisplay()
               }
             },
           });
     }
+
+    updateTodo(data) {
+      var self = this;
+      var todo = self.lists.all.findTodoByTitle(data.title);
+      var id = todo.id;
+
+        $.ajax({
+            url: `/api/todos/${id}`,
+            method: 'PUT',
+            data: todo,
+            dataType: 'json',
+            success: function(json, statusText, xhr) {
+              if (xhr.status === 200) {
+                self.display.renderForm(true)
+                self.refreshDisplay()
+              }
+            },
+          });
+    }
+
+    completeTodo(id) {
+      var self = this;
+      var id = +id;
+
+        $.ajax({
+            url: `/api/todos/${id}`,
+            method: 'PUT',
+            data: {completed: true},
+            dataType: 'json',
+            success: function(json, statusText, xhr) {
+              if (xhr.status === 200) {
+                console.log(json, 'completed request')
+                let todo = self.lists.all.findTodo(+json.id);
+                todo.markCompleted()
+                self.display.markCompleted(id)
+                self.display.renderEditForm(true)
+                // self.refreshDisplay()
+              }
+            },
+          });
+    }
+
 
     deleteTodo(id) {
       id = +id
@@ -120,6 +162,7 @@ var sample = {
         },
       });
     }
+
  }
 
   class TodoList {
@@ -138,13 +181,14 @@ var sample = {
     removeTodo(id) {
       this.todos = this.todos.filter(todo => todo.id !== +id)
       this.length -= 1;
-      /* const idx = this.getIndex(id)
-      // this.todos = this.todos.splice(idx, 1)
-         return [].concat(this.todos) */
     }
 
     findTodo(id) {
       return this.todos.find(t => t.id === id)
+    }
+
+    findTodoByTitle(title) {
+      return this.todos.find(t => t.title === title)
     }
 
     getIndex(id) {
@@ -153,9 +197,8 @@ var sample = {
       for (let i = 0; i < self.todos.length; i++) {
         let todo = self.todos[i]
         if (todo.id === id) {return i}
-      }
+      };
     }
-
   };
 
   class Todo {
@@ -166,7 +209,7 @@ var sample = {
       this.day = day
       this.month = month
       this.year = year
-      this.completed = completed === 'true' ? true : false
+      this.completed = completed === 'true' || completed === true ? true : false
       this.description = description
     }
 
@@ -174,6 +217,10 @@ var sample = {
       const date = `${this.month}/${this.year}`
       if (date === '/') {return "No Due Date"}
       return date;
+    }
+
+    markCompleted(){
+      this.completed = true;
     }
   }
 
@@ -199,16 +246,37 @@ var sample = {
       this.renderMain(json)
     }
 
-    renderAddForm(hide=false){
-      var $addForm = $('#form_modal')
+    renderForm(hide=false){
+      var $formModal = $('#form_modal')
       var $modalLayer = $('#modal_layer')
       if (hide) {
-        $addForm.fadeOut('slow')
+        $formModal.fadeOut('slow')
         $modalLayer.fadeOut('slow')
+        $formModal.trigger('reset')
       } else if (!hide) {
         $modalLayer.fadeIn()
-        $addForm.fadeIn()
+        $formModal.fadeIn()
       }
+    }
+
+    populateForm(todoObj) {
+      var $inputs = [$('input#title'), $('select#due_day'), $('select#due_month'), $('select#due_year'), $("textarea[name='description']")]
+      var [$title, $day, $month, $year, $description] = $inputs
+      $title.val(todoObj.title)
+      $day.val(todoObj.day)
+      $month.val(todoObj.month)
+      $year.val(todoObj.year)
+      $description.val(todoObj.description)
+      // console.log($inputs)
+    }
+
+    renderEditForm(hide=false, todo){
+      hide ? this.renderForm(true) : this.renderForm()
+    }
+
+    markCompleted(id) {
+      var $input = $(`tr[data-id=${id}]`).find('input')
+      $input.is(':checked') ? $input.prop("checked", false) : $input.prop("checked", true);
     }
   };
 
@@ -216,13 +284,14 @@ var sample = {
   test = app;
 
   $(document).on('click', "label[for='new_item']", function(e){
-    var target = e.target;
-    app.display.renderAddForm();
+    $('form').trigger('reset')
+    $('form').attr('method', 'post')
+    app.display.renderForm();
   });
 
   $(document).on('click', "#modal_layer", function(e){
     var form = document.querySelector('#form_modal')
-    app.display.renderAddForm(true);
+    app.display.renderForm(true);
   });
 
   $(document).on('click', "td.delete", function(e){
@@ -233,11 +302,35 @@ var sample = {
 
   $(document).on('submit', '#form_modal',function(e){
     e.preventDefault();
-    var addForm = $(e.currentTarget).find('form');
-    var data = app.formToJSON(addForm);
+    var $form = $('form');
+    var data = app.formToJSON($form[0]);
 
-    console.log(data)
-    app.newTodo(data)
+    if (e.target.tagName ==='BUTTON') {return;}
+    $form.attr('method').toLowerCase() === 'post' ? app.newTodo(data) : app.updateTodo(data)
+  });
+
+  $(document).on('click', "button[name='complete']", function(e){
+    const data = app.formToJSON($('form')[0]);
+    let todo = app.lists.all.findTodoByTitle(data.title)
+    app.completeTodo(todo.id)
+  })
+
+  $(document).on('click', 'tr td.list_item', function(e){
+    e.preventDefault()
+    let id = +$(this).closest('tr').data('id')
+    let todo = app.lists.all.findTodo(id)
+
+    if (e.target.tagName === 'LABEL') {
+
+      console.log(id, todo, 'edit clicked')
+
+      $('form').attr('method', 'put')
+      app.display.populateForm(todo)
+      app.display.renderEditForm()
+      return;
+    }
+
+    // todo.markCompleted()
   });
 
 })
