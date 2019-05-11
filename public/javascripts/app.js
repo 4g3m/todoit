@@ -105,19 +105,22 @@ var sample = {
           });
     }
 
-    updateTodo(data) {
+    updateTodo(id, data) {
       var self = this;
-      var todo = self.lists.all.findTodoByTitle(data.title);
-      var id = todo.id;
+      var todo = self.lists.all.findTodo(id);
 
         $.ajax({
             url: `/api/todos/${id}`,
             method: 'PUT',
-            data: todo,
+            data: data,
             dataType: 'json',
             success: function(json, statusText, xhr) {
+              debugger;
               if (xhr.status === 200) {
-                self.display.renderForm(true)
+                self.display.renderEditForm(true)
+                for (let prop in data) {
+                  todo[prop] = data[prop]
+                }
                 self.refreshDisplay()
               }
             },
@@ -285,7 +288,7 @@ var sample = {
 
   $(document).on('click', "label[for='new_item']", function(e){
     $('form').trigger('reset')
-    $('form').attr('method', 'post')
+    $('form').attr('method', 'post').removeAttr('data-id')
     app.display.renderForm();
   });
 
@@ -305,14 +308,12 @@ var sample = {
     var $form = $('form');
     var data = app.formToJSON($form[0]);
 
-    console.log(e.target.name)
-    if (e.target.name ==='complete' ) {return;}
-    $form.attr('method').toLowerCase() === 'post' ? app.newTodo(data) : app.updateTodo(data)
+    $form.attr('method').toLowerCase() === 'post' ? app.newTodo(data) : app.updateTodo($form.data('id'), data)
   });
 
   $(document).on('click', "button[name='complete']", function(e){
     const data = app.formToJSON($('form')[0]);
-    let todo = app.lists.all.findTodoByTitle(data.title)
+    let todo = app.lists.all.findTodo($('form').data('id'))
     app.completeTodo(todo.id)
   })
 
@@ -325,7 +326,7 @@ var sample = {
 
       console.log(id, todo, 'edit clicked')
 
-      $('form').attr('method', 'put')
+      $('form').attr('method', 'put').attr('data-id', id)
       app.display.populateForm(todo)
       app.display.renderEditForm()
       return;
