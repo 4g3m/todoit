@@ -118,9 +118,7 @@ var sample = {
               debugger;
               if (xhr.status === 200) {
                 self.display.renderEditForm(true)
-                for (let prop in data) {
-                  todo[prop] = data[prop]
-                }
+                todo.update(data)
                 self.refreshDisplay()
               }
             },
@@ -224,6 +222,12 @@ var sample = {
 
     markCompleted(){
       this.completed = true;
+    }
+
+    update(data) {
+      for (let prop in data) {
+        this[prop] = data[prop]
+      }
     }
   }
 
