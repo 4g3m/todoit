@@ -138,9 +138,9 @@ var sample = {
     removeTodo(id) {
       this.todos = this.todos.filter(todo => todo.id !== +id)
       this.length -= 1;
-      // const idx = this.getIndex(id)
+      /* const idx = this.getIndex(id)
       // this.todos = this.todos.splice(idx, 1)
-      // return [].concat(this.todos)
+         return [].concat(this.todos) */
     }
 
     findTodo(id) {
