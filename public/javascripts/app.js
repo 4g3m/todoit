@@ -115,7 +115,6 @@ var sample = {
             data: data,
             dataType: 'json',
             success: function(json, statusText, xhr) {
-              debugger;
               if (xhr.status === 200) {
                 self.display.renderEditForm(true)
                 todo.update(data)
@@ -175,12 +174,35 @@ var sample = {
 
     addTodo(todo) {
       this.todos.push(todo);
+      this.sort()
       this.length += 1
       return todo;
     }
 
+    sort(){
+      var dateSort = (a, b) => {
+        return new Date(a[1], a[0], 1) - new Date(b[1], b[0], 1)
+        debugger;
+      }
+
+
+      this.todos.sort((todo1, todo2) =>{
+        if (todo1.completed && todo2.completed || !todo1.completed && !todo2.completed) {
+          console.log('tie', todo1, todo2)
+          let todo1Date = [todo1.month, todo1.year]
+          let todo2Date = [todo2.month, todo2.year]
+          return dateSort(todo1Date, todo2Date)
+        } else if (todo1.completed && !todo2.completed) {
+          return 1
+        } else if (!todo1.completed && todo2.completed) {
+          return -1
+        }
+      })
+    }
+
     removeTodo(id) {
       this.todos = this.todos.filter(todo => todo.id !== +id)
+      this.sort()
       this.length -= 1;
     }
 
@@ -274,7 +296,6 @@ var sample = {
       $month.val(todoObj.month)
       $year.val(todoObj.year)
       $description.val(todoObj.description)
-      // console.log($inputs)
     }
 
     renderEditForm(hide=false, todo){
