@@ -39,34 +39,39 @@ var sample = {
       this.context.selected = list.todos
     }
 
-    updateContext(todo) {
-      var addTodoToList = function(todo) {
+    addTodoByDate(todo) {
+        if (!todo instanceof Todo) {return;}
         var datesList = todo.completed ? this.context['todos_by_date'] : this.context['done_todos_by_date']
-        if (todo.month && todo.year) {
-          let date = `${todo.month}/${todo.year}`
-          if (datesList.hasOwnProperty(date)) {
-            datesList[date].addTodo(todo)
-          } else {
-            let newList = new TodoList(date)
-            newList.addTodo(todo)
-            datesList[date] = newList
-          };
-        } else {
-          let title = 'No Due Date'
+        var title, newList;
+        if (todo.month && todo.year) { //completed
+          title = `${todo.month}/${todo.year}`
           if (datesList.hasOwnProperty(title)) {
             datesList[title].addTodo(todo)
           } else {
-            let newList = new TodoList(title)
+            newList = new TodoList(title)
+            newList.addTodo(todo)
+            datesList[title] = newList
+          };
+        } else {
+          title = 'No Due Date'
+          if (datesList.hasOwnProperty(title)) { //not completed
+            datesList[title].addTodo(todo)
+          } else {
+            newList = new TodoList(title)
             newList.addTodo(title)
             datesList[title] = newList
           };
-        };
-      }.bind(this)
+        }
 
-      addTodoToList(todo)
+          this.lists.hasOwnProperty(title) ? undefined : this.lists[title] = datesList[title];
+          // debugger;
+    }
 
-
+    addContext(todo) {
       var self = this
+      self.addTodoByDate(todo)
+
+
       self.lists.all.addTodo(todo)
       self.context.todos.push(todo)
       if (todo.completed) {
@@ -76,16 +81,24 @@ var sample = {
     }
 
     refreshDisplay(context=this.context, list=this.lists.all) {
-      debugger;
       const self = this;
-      self.updateSelected(list)
       self.updateCurrentSection(list)
+      self.updateSelected(list)
       self.display.refreshMain(context)
     }
 
     findList(name){
-      name = name.toLowerCase()
-      if (name === 'all lists') {return this.lists.all}
+      console.log(name)
+       switch (name) {
+        case 'All Lists':
+          return this.lists.all;
+        case 'No Due Date':
+          return this.lists['No Due Date']
+        case 'Completed':
+          return this.lists.completed
+      }
+
+
       return this.lists.hasOwnProperty(name) ? this.lists[name] : undefined
     }
 
@@ -101,7 +114,7 @@ var sample = {
             obj[name] = val;
         });
         return obj;
-    };
+    }
 
     objToTodoArgs(obj){
       const {id, title, day, month, year, completed, description} = obj
@@ -120,7 +133,7 @@ var sample = {
           json.forEach((todo) => {
             let args = self.objToTodoArgs(todo)
             var todo = new Todo(...args)
-            self.updateContext(todo)
+            self.addContext(todo)
           });
 
           self.updateCurrentSection(self.lists.all)
@@ -141,7 +154,7 @@ var sample = {
               if (xhr.status === 201) {
                 var vals = self.objToTodoArgs(json)
                 let todo = new Todo(...vals)
-                self.lists.all.addTodo(todo)
+                self.addContext(todo)
                 self.display.renderForm(true)
                 self.refreshDisplay()
               }
@@ -162,7 +175,8 @@ var sample = {
               if (xhr.status === 200) {
                 self.display.renderEditForm(true)
                 todo.update(data)
-                self.refreshDisplay()
+                self.updateCurrentSection(self.context.selected)
+                self.refreshDisplay(undefined, self.context.selected)
               }
             },
           });
@@ -184,9 +198,10 @@ var sample = {
                 todo.markCompleted()
                 self.lists.done.addTodo(todo)
                 self.context.done = self.lists.done.todos
+                self.updateCurrentSection(self.context.selected)
                 self.display.markCompleted(id)
                 self.display.renderEditForm(true)
-                // self.refreshDisplay()
+                self.refreshDisplay()
               }
             },
           });
@@ -201,6 +216,7 @@ var sample = {
         success: function(data, respText, xhr) {
           if (xhr.status === 204) {
             self.lists.all.removeTodo(id)
+            self.updateCurrentSection(self.context.selected)
             self.refreshDisplay()
             $(`tr[data-id='${id}']`).remove()
           };
@@ -408,11 +424,23 @@ var sample = {
     // todo.markCompleted()
   });
 
-  $(document).on('click', '#sidebar header', '#sidebar dl', function(e){
+  $(document).on('click', '#sidebar header', function(e){
     var target = e.target
     var listName = $(target).closest('header').data('title')
     $('.active').removeClass('active')
     $(target).closest('header').addClass('active')
+    app.refreshDisplay(undefined, app.findList(listName))
+  });
+
+  $(document).on('click', '#sidebar article dl', function(e){
+    e.preventDefault()
+    e.stopPropagation()
+    e.stopImmediatePropagation()
+    var target = e.target
+    var listName = $(target).closest('dl').data('title')
+    debugger;
+    $('.active').removeClass('active')
+    $(target).addClass('active')
     app.refreshDisplay(undefined, app.findList(listName))
   })
 
