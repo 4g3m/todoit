@@ -25,8 +25,8 @@ var sample = {
       this.lists['all'] = new TodoList('All Todos')
       this.lists['completed'] = new TodoList('Completed')
       this.display = null;
+      this.context = {selected: this.lists.all.todos, current_section: {title: this.lists.all.name, data: this.lists.all.length}, done: [], todos: [], todos_by_date: {}, done_todos_by_date: {}, };
       this.getTodos();
-      this.context = {selected: this.lists.all.todos, current_section: {title: this.lists.all.name, data: this.lists.all.length}};
     }
 
     updateCurrentSection(list) {
@@ -39,11 +39,54 @@ var sample = {
       this.context.selected = list.todos
     }
 
+    updateContext(todo) {
+      var addTodoToList = function(todo) {
+        var datesList = todo.completed ? this.context['todos_by_date'] : this.context['done_todos_by_date']
+        if (todo.month && todo.year) {
+          let date = `${todo.month}/${todo.year}`
+          if (datesList.hasOwnProperty(date)) {
+            datesList[date].addTodo(todo)
+          } else {
+            let newList = new TodoList(date)
+            newList.addTodo(todo)
+            datesList[date] = newList
+          };
+        } else {
+          let title = 'No Due Date'
+          if (datesList.hasOwnProperty(title)) {
+            datesList[title].addTodo(todo)
+          } else {
+            let newList = new TodoList(title)
+            newList.addTodo(title)
+            datesList[title] = newList
+          };
+        };
+      }.bind(this)
+
+      addTodoToList(todo)
+
+
+      var self = this
+      self.lists.all.addTodo(todo)
+      self.context.todos.push(todo)
+      if (todo.completed) {
+          self.lists.completed.addTodo(todo)
+          self.context.done.push(todo)
+      }
+    }
+
     refreshDisplay(context=this.context, list=this.lists.all) {
+      debugger;
       const self = this;
       self.updateSelected(list)
       self.updateCurrentSection(list)
       self.display.refreshMain(context)
+    }
+
+    findList(name){
+      name = name.toLowerCase()
+      if (name === 'all lists') {return this.lists.all}
+      return this.lists.hasOwnProperty(name) ? this.lists[name] : undefined
     }
 
     formToJSON(form) {
@@ -77,11 +120,12 @@ var sample = {
           json.forEach((todo) => {
             let args = self.objToTodoArgs(todo)
             var todo = new Todo(...args)
-            self.lists.all.addTodo(todo)
+            self.updateContext(todo)
           });
 
           self.updateCurrentSection(self.lists.all)
           self.display = new Display(self.context)
+          $("#all_header").addClass('active')
         },
       });
     }
@@ -138,6 +182,8 @@ var sample = {
                 console.log(json, 'completed request')
                 let todo = self.lists.all.findTodo(+json.id);
                 todo.markCompleted()
+                self.lists.done.addTodo(todo)
+                self.context.done = self.lists.done.todos
                 self.display.markCompleted(id)
                 self.display.renderEditForm(true)
                 // self.refreshDisplay()
@@ -145,7 +191,6 @@ var sample = {
             },
           });
     }
-
 
     deleteTodo(id) {
       id = +id
@@ -168,6 +213,7 @@ var sample = {
   class TodoList {
     constructor(name){
       this.name = name;
+      this.key = name;
       this.todos = [];
       this.length = this.todos.length;
     }
@@ -185,10 +231,8 @@ var sample = {
         debugger;
       }
 
-
       this.todos.sort((todo1, todo2) =>{
         if (todo1.completed && todo2.completed || !todo1.completed && !todo2.completed) {
-          console.log('tie', todo1, todo2)
           let todo1Date = [todo1.month, todo1.year]
           let todo2Date = [todo2.month, todo2.year]
           return dateSort(todo1Date, todo2Date)
@@ -264,10 +308,10 @@ var sample = {
       $partialTmpls.each( (idx, e) => Handlebars.registerPartial(e.id, $(e).html()))
     }
 
-    renderMain(todosJSON={}){
+    renderMain(jsonCtx={}){
       const html = $('script#main_template').html()
       var mainTmplFnc = Handlebars.compile(html)
-      $(document.body).append(mainTmplFnc(todosJSON))
+      $(document.body).append(mainTmplFnc(jsonCtx))
     }
 
     refreshMain(json){
@@ -337,6 +381,10 @@ var sample = {
   });
 
   $(document).on('click', "button[name='complete']", function(e){
+    if ($(e.target).closest('form').attr('method').toLowerCase() === 'post') {
+      alert('Cannot mark as complete as item has not been created yet!')
+      return;
+    }
     const data = app.formToJSON($('form')[0]);
     let todo = app.lists.all.findTodo($('form').data('id'))
     app.completeTodo(todo.id)
@@ -359,5 +407,13 @@ var sample = {
 
     // todo.markCompleted()
   });
+
+  $(document).on('click', '#sidebar header', '#sidebar dl', function(e){
+    var target = e.target
+    var listName = $(target).closest('header').data('title')
+    $('.active').removeClass('active')
+    $(target).closest('header').addClass('active')
+    app.refreshDisplay(undefined, app.findList(listName))
+  })
 
 })
