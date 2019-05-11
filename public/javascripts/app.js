@@ -1,0 +1,243 @@
+var test;
+
+$(function() {
+var sample = {
+    todos: [],
+    done: [],
+    selected: [{
+            'id': '1',
+            'title': 'todo1',
+            'day': '11',
+            'month': '11',
+            'year': '2017',
+            'completed': 'true',
+            'description': 'Some Description',
+            'due_date': "11/12/17",
+        }
+    ],
+    todos_by_date: this.todos,
+    current_section: { title: 'All Todos', data: 2 },
+}
+
+  class TodoApp {
+    constructor(){
+      this.lists = {};
+      this.lists['all'] = new TodoList('All Todos')
+      this.display = null;
+      this.getTodos();
+      this.context = {selected: this.lists.all.todos, current_section: {title: this.lists.all.name, data: this.lists.all.length}};
+    }
+
+    updateCurrentSection(list) {
+      const obj = this.context['current_section']
+      obj.title = list.name
+      obj.data = list.length
+    }
+
+    updateSelected(list) {
+      this.context.selected = list.todos
+    }
+
+    refreshDisplay(context=this.context, list=this.lists.all) {
+      const self = this;
+      self.updateSelected(list)
+      self.updateCurrentSection(list)
+      self.display.refreshMain(context)
+    }
+
+    formToJSON(form) {
+        const obj = {};
+        const data = $(form).serializeArray()
+        $(data).each(function(idx, inputObj) {
+            var name = inputObj.name;
+            if (name.includes('due_')) {name = name.replace(/due_/, '')}
+            var val = inputObj.value;
+            let invalidVal = ['day', 'month', 'year'].includes(val.toLowerCase())
+            if (invalidVal) {val = ''}
+            obj[name] = val;
+        });
+        return obj;
+    };
+
+    objToTodoArgs(obj){
+      const {id, title, day, month, year, completed, description} = obj
+      const arr = [id, title, day, month, year, description]
+      return arr;
+    }
+
+    getTodos(){
+      var self = this
+      $.ajax({
+        url: '/api/todos',
+        method: 'GET',
+        dataType: 'json',
+        success: function(json, respText, xhr) {
+          var todos = json;
+          json.forEach((todo) => {
+            let args = self.objToTodoArgs(todo)
+            var todo = new Todo(...args)
+            self.lists.all.addTodo(todo)
+          });
+
+          self.updateCurrentSection(self.lists.all)
+          self.display = new Display(self.context)
+        },
+      });
+    }
+
+    newTodo(data) {
+      var self = this
+        $.ajax({
+            url: '/api/todos',
+            method: 'POST',
+            data: data,
+            dataType: 'json',
+            success: function(json, statusText, xhr) {
+              if (xhr.status === 201) {
+                var vals = self.objToTodoArgs(json)
+                let todo = new Todo(...vals)
+                self.lists.all.addTodo(todo)
+                document.querySelector('form').reset()
+                self.display.renderAddForm(true)
+                self.refreshDisplay()
+              }
+            },
+          });
+    }
+
+    deleteTodo(id) {
+      id = +id
+      var self = this
+      $.ajax({
+        url: `/api/todos/${id}`,
+        method: 'DELETE',
+        success: function(data, respText, xhr) {
+          if (xhr.status === 204) {
+            self.lists.all.removeTodo(id)
+            self.refreshDisplay()
+            $(`tr[data-id='${id}']`).remove()
+          };
+        },
+      });
+    }
+ }
+
+  class TodoList {
+    constructor(name){
+      this.name = name;
+      this.todos = [];
+      this.length = this.todos.length;
+    }
+
+    addTodo(todo) {
+      this.todos.push(todo);
+      this.length += 1
+      return todo;
+    }
+
+    removeTodo(id) {
+      this.todos = this.todos.filter(todo => todo.id !== +id)
+      this.length -= 1;
+      // const idx = this.getIndex(id)
+      // this.todos = this.todos.splice(idx, 1)
+      // return [].concat(this.todos)
+    }
+
+    findTodo(id) {
+      return this.todos.find(t => t.id === id)
+    }
+
+    getIndex(id) {
+      id = +id
+      const self = this;
+      for (let i = 0; i < self.todos.length; i++) {
+        let todo = self.todos[i]
+        if (todo.id === id) {return i}
+      }
+    }
+
+  };
+
+  class Todo {
+    constructor(id, title, day, month, year, completed=false, description) {
+      if (!id) {throw new Error('Invalid Todo.')}
+      this.id = +id
+      this.title = title
+      this.day = day
+      this.month = month
+      this.year = year
+      this.completed = completed === 'true' ? true : false
+      this.description = description
+    }
+
+    due_date(){
+      const date = `${this.month}/${this.year}`
+      if (date === '/') {return "No Due Date"}
+      return date;
+    }
+  }
+
+  class Display {
+    constructor(jsonCtx){
+      this.registerPartials();
+      this.renderMain(jsonCtx);
+    }
+
+    registerPartials(){
+      const $partialTmpls = $("script[data-type='partial']")
+      $partialTmpls.each( (idx, e) => Handlebars.registerPartial(e.id, $(e).html()))
+    }
+
+    renderMain(todosJSON={}){
+      const html = $('script#main_template').html()
+      var mainTmplFnc = Handlebars.compile(html)
+      $(document.body).append(mainTmplFnc(todosJSON))
+    }
+
+    refreshMain(json){
+      $(document.body).children(':not(script)').remove()
+      this.renderMain(json)
+    }
+
+    renderAddForm(hide=false){
+      var $addForm = $('#form_modal')
+      var $modalLayer = $('#modal_layer')
+      if (hide) {
+        $addForm.fadeOut('slow')
+        $modalLayer.fadeOut('slow')
+      } else if (!hide) {
+        $modalLayer.fadeIn()
+        $addForm.fadeIn()
+      }
+    }
+  };
+
+  var app = new TodoApp();
+  test = app;
+
+  $(document).on('click', "label[for='new_item']", function(e){
+    var target = e.target;
+    app.display.renderAddForm();
+  });
+
+  $(document).on('click', "#modal_layer", function(e){
+    var form = document.querySelector('#form_modal')
+    app.display.renderAddForm(true);
+  });
+
+  $(document).on('click', "td.delete", function(e){
+    var id = $(this).closest('tr').data('id')
+    console.log(id, this)
+    app.deleteTodo(+id)
+  });
+
+  $(document).on('submit', '#form_modal',function(e){
+    e.preventDefault();
+    var addForm = $(e.currentTarget).find('form');
+    var data = app.formToJSON(addForm);
+
+    console.log(data)
+    app.newTodo(data)
+  });
+
+})
