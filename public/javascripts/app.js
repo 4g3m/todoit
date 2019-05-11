@@ -305,7 +305,8 @@ var sample = {
     var $form = $('form');
     var data = app.formToJSON($form[0]);
 
-    if (e.target.tagName ==='BUTTON') {return;}
+    console.log(e.target.name)
+    if (e.target.name ==='complete' ) {return;}
     $form.attr('method').toLowerCase() === 'post' ? app.newTodo(data) : app.updateTodo(data)
   });
 
