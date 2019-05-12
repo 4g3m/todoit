@@ -1,24 +1,6 @@
 var test;
 
 $(function() {
-var sample = {
-    todos: [],
-    done: [],
-    selected: [{
-            'id': '1',
-            'title': 'todo1',
-            'day': '11',
-            'month': '11',
-            'year': '2017',
-            'completed': 'true',
-            'description': 'Some Description',
-            'due_date': "11/12/17",
-        }
-    ],
-    todos_by_date: {'06/18': 0},
-    current_section: { title: 'All Todos', data: 2 },
-}
-
   class TodoApp {
     constructor(){
       this.lists = {};
@@ -35,42 +17,69 @@ var sample = {
       obj.data = list.length
     }
 
+    refreshSidebarLists(todos=this.lists.all.todos){
+      var done = {};
+      var notDone = {};
+      var self = this;
+
+      var addCompletedTodo = function(todo) {
+          var date;
+          if (todo.month && todo.year) {
+            date = `${todo.month}/${todo.year}`
+            if (!done.hasOwnProperty(date)) {
+               var list = new TodoList(date)
+               list.addTodo(todo)
+               done[date] = list
+            } else {
+              done[date].addTodo(todo)
+            }
+          } else {
+            if (!done.hasOwnProperty('No Due Date')) {
+               var list = new TodoList('No Due Date')
+               list.addTodo(todo)
+               done['No Due Date'] = list
+            } else {
+              done['No Due Date'].addTodo(todo)
+            }
+          }
+       }
+      var addGeneralTodo = function(todo){
+          var date;
+          if (todo.month && todo.year) {
+            date = `${todo.month}/${todo.year}`
+            if (!notDone.hasOwnProperty(date)) {
+               var list = new TodoList(date)
+               list.addTodo(todo)
+               notDone[date] = list
+            } else {
+              notDone[date].addTodo(todo)
+            }
+          } else {
+            if (!notDone.hasOwnProperty('No Due Date')) {
+               var list = new TodoList('No Due Date')
+               list.addTodo(todo)
+               notDone['No Due Date'] = list
+            } else {
+              notDone['No Due Date'].addTodo(todo)
+            }
+          }
+      }
+
+      todos.forEach((todo) => {
+        if (todo.completed) {addCompletedTodo(todo)};
+        addGeneralTodo(todo)
+      })
+
+      self.context['done_todos_by_date'] = done
+      self.context['todos_by_date'] = notDone
+    }
+
     updateSelected(list) {
       this.context.selected = list.todos
     }
 
-    addTodoByDate(todo) {
-        if (!todo instanceof Todo) {return;}
-        var datesList = todo.completed ? this.context['todos_by_date'] : this.context['done_todos_by_date']
-        var title, newList;
-        if (todo.month && todo.year) { //completed
-          title = `${todo.month}/${todo.year}`
-          if (datesList.hasOwnProperty(title)) {
-            datesList[title].addTodo(todo)
-          } else {
-            newList = new TodoList(title)
-            newList.addTodo(todo)
-            datesList[title] = newList
-          };
-        } else {
-          title = 'No Due Date'
-          if (datesList.hasOwnProperty(title)) { //not completed
-            datesList[title].addTodo(todo)
-          } else {
-            newList = new TodoList(title)
-            newList.addTodo(title)
-            datesList[title] = newList
-          };
-        }
-
-          this.lists.hasOwnProperty(title) ? undefined : this.lists[title] = datesList[title];
-          // debugger;
-    }
-
     addContext(todo) {
       var self = this
-      self.addTodoByDate(todo)
-
 
       self.lists.all.addTodo(todo)
       self.context.todos.push(todo)
@@ -78,28 +87,28 @@ var sample = {
           self.lists.completed.addTodo(todo)
           self.context.done.push(todo)
       }
+
+      self.refreshSidebarLists()
     }
 
     refreshDisplay(context=this.context, list=this.lists.all) {
       const self = this;
       self.updateCurrentSection(list)
       self.updateSelected(list)
+      self.refreshSidebarLists()
       self.display.refreshMain(context)
     }
 
-    findList(name){
-      console.log(name)
-       switch (name) {
+    findList(name, title){
+      switch (name) {
         case 'All Lists':
-          return this.lists.all;
-        case 'No Due Date':
-          return this.lists['No Due Date']
+          return this.lists.all
         case 'Completed':
           return this.lists.completed
       }
 
-
-      return this.lists.hasOwnProperty(name) ? this.lists[name] : undefined
+      var list = title === 'Completed'  ? this.context['done_todos_by_date'] : this.context['todos_by_date']
+      return list[name]
     }
 
     formToJSON(form) {
@@ -175,8 +184,7 @@ var sample = {
               if (xhr.status === 200) {
                 self.display.renderEditForm(true)
                 todo.update(data)
-                self.updateCurrentSection(self.context.selected)
-                self.refreshDisplay(undefined, self.context.selected)
+                self.refreshDisplay()
               }
             },
           });
@@ -196,8 +204,8 @@ var sample = {
                 console.log(json, 'completed request')
                 let todo = self.lists.all.findTodo(+json.id);
                 todo.markCompleted()
-                self.lists.done.addTodo(todo)
-                self.context.done = self.lists.done.todos
+                self.lists.completed.addTodo(todo)
+                self.context.done = self.lists.completed.todos
                 self.updateCurrentSection(self.context.selected)
                 self.display.markCompleted(id)
                 self.display.renderEditForm(true)
@@ -216,9 +224,10 @@ var sample = {
         success: function(data, respText, xhr) {
           if (xhr.status === 204) {
             self.lists.all.removeTodo(id)
+            self.context.todos = self.context.todos.filter((todo) => todo.id !== id)
             self.updateCurrentSection(self.context.selected)
+            self.refreshSidebarLists()
             self.refreshDisplay()
-            $(`tr[data-id='${id}']`).remove()
           };
         },
       });
@@ -229,7 +238,7 @@ var sample = {
   class TodoList {
     constructor(name){
       this.name = name;
-      this.key = name;
+      // this.key = name;
       this.todos = [];
       this.length = this.todos.length;
     }
@@ -244,7 +253,6 @@ var sample = {
     sort(){
       var dateSort = (a, b) => {
         return new Date(a[1], a[0], 1) - new Date(b[1], b[0], 1)
-        debugger;
       }
 
       this.todos.sort((todo1, todo2) =>{
@@ -420,28 +428,31 @@ var sample = {
       app.display.renderEditForm()
       return;
     }
-
-    // todo.markCompleted()
   });
 
   $(document).on('click', '#sidebar header', function(e){
     var target = e.target
     var listName = $(target).closest('header').data('title')
     $('.active').removeClass('active')
-    $(target).closest('header').addClass('active')
+    console.log(target)
+    $(target).closest('section').find('header').addClass('active')
     app.refreshDisplay(undefined, app.findList(listName))
   });
 
   $(document).on('click', '#sidebar article dl', function(e){
     e.preventDefault()
     e.stopPropagation()
-    e.stopImmediatePropagation()
+
     var target = e.target
     var listName = $(target).closest('dl').data('title')
-    debugger;
+
+    var header = $(target).closest('section').find('header').data('title')
+    var data = header
     $('.active').removeClass('active')
-    $(target).addClass('active')
-    app.refreshDisplay(undefined, app.findList(listName))
+
+    app.refreshDisplay(undefined, app.findList(listName, header))
+    console.log(e.target)
+    $(e.target).addClass('active')
   })
 
 })
