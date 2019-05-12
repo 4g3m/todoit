@@ -15,7 +15,7 @@ $(function() {
       const obj = this.context['current_section']
       obj.title = list.name
       obj.data = list.length
-    }
+    } //context updater
 
     refreshSidebarLists(todos=this.lists.all.todos){
       var done = {};
@@ -72,11 +72,11 @@ $(function() {
 
       self.context['done_todos_by_date'] = done
       self.context['todos_by_date'] = notDone
-    }
+    } //context updater
 
     updateSelected(list) {
       this.context.selected = list.todos
-    }
+    } //context updater
 
     addContext(todo) {
       var self = this
@@ -89,7 +89,7 @@ $(function() {
       }
 
       self.refreshSidebarLists()
-    }
+    } //context updater
 
     refreshDisplay(context=this.context, list=this.lists.all) {
       const self = this;
@@ -109,7 +109,7 @@ $(function() {
 
       var list = title === 'Completed'  ? this.context['done_todos_by_date'] : this.context['todos_by_date']
       return list[name]
-    }
+    } // fetches List
 
     formToJSON(form) {
         const obj = {};
@@ -150,7 +150,7 @@ $(function() {
           $("#all_header").addClass('active')
         },
       });
-    }
+    } // loads at beginning to fetch all todos on database.
 
     newTodo(data) {
       var self = this
@@ -225,6 +225,7 @@ $(function() {
           if (xhr.status === 204) {
             self.lists.all.removeTodo(id)
             self.context.todos = self.context.todos.filter((todo) => todo.id !== id)
+            self.context.done = self.context.done.filter((todo) => todo.id !== id)
             self.updateCurrentSection(self.context.selected)
             self.refreshSidebarLists()
             self.refreshDisplay()
@@ -238,7 +239,6 @@ $(function() {
   class TodoList {
     constructor(name){
       this.name = name;
-      // this.key = name;
       this.todos = [];
       this.length = this.todos.length;
     }
@@ -434,10 +434,13 @@ $(function() {
     var target = e.target
     var listName = $(target).closest('header').data('title')
     $('.active').removeClass('active')
-    console.log(target)
-    $(target).closest('section').find('header').addClass('active')
+    var id = $(target).closest('section').attr('id')
+
     app.refreshDisplay(undefined, app.findList(listName))
-  });
+
+    var $start = (id === 'all' ? $('section#all') : $('.completed') )
+    $start.find('header').addClass('active')
+  }); //highlight todo section header
 
   $(document).on('click', '#sidebar article dl', function(e){
     e.preventDefault()
@@ -448,11 +451,14 @@ $(function() {
 
     var header = $(target).closest('section').find('header').data('title')
     var data = header
+
+    var id = $(target).closest('section').attr('id')
     $('.active').removeClass('active')
 
+
     app.refreshDisplay(undefined, app.findList(listName, header))
-    console.log(e.target)
-    $(e.target).addClass('active')
-  })
+    var $start = (id === 'all' ? $('section#all') : $('.completed') )
+    $start.find(`dl[data-title='${listName}']`).addClass('active')
+  }) // highlight todo date
 
 })
