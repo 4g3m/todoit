@@ -400,6 +400,11 @@ $(function() {
   var app = new TodoApp();
   test = app;
 
+  $(document).on('click', function(e){
+    function func(){$('#items dd').text($('table tr').length)}
+    setTimeout(func, 100)
+  }) // hot fix for count issue. logic is more entangled on TodoList.length incrementing incorrectly.
+
   $(document).on('click', "label[for='new_item']", function(e){
     $('form').trigger('reset')
     $('form').attr('method', 'post').removeAttr('data-id')
