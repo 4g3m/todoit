@@ -1,5 +1,3 @@
-var test;
-
 $(function() {
   class TodoApp {
     constructor(){
@@ -12,9 +10,11 @@ $(function() {
     }
 
     updateCurrentSection(list) {
-      const obj = this.context['current_section']
+      const obj = this.context.current_section
       obj.title = list.name
       obj.data = list.length
+      list.sort()
+      if (list.name === 'Completed') {obj.data = this.lists.completed.length}
     } //context updater
 
     refreshSidebarLists(todos=this.lists.all.todos){
@@ -248,7 +248,6 @@ $(function() {
             self.context.todos = self.context.todos.filter((todo) => todo.id !== id)
             self.context.done = self.context.done.filter((todo) => todo.id !== id)
 
-            self.updateCurrentSection(self.context.selected)
             self.refreshSidebarLists()
             self.refreshDisplay(undefined, self.findList(name, title))
           };
