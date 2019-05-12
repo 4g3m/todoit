@@ -93,9 +93,9 @@ $(function() {
 
     refreshDisplay(context=this.context, list=this.lists.all) {
       const self = this;
+      self.refreshSidebarLists()
       self.updateCurrentSection(list)
       self.updateSelected(list)
-      self.refreshSidebarLists()
       self.display.refreshMain(context)
     }
 
@@ -154,6 +154,10 @@ $(function() {
 
     newTodo(data) {
       var self = this
+
+      var name = $('div#items time').text()
+      var title = $('.active').closest('section').attr('class') === 'completed' ? 'Completed' : 'All Todos'
+
         $.ajax({
             url: '/api/todos',
             method: 'POST',
@@ -165,7 +169,7 @@ $(function() {
                 let todo = new Todo(...vals)
                 self.addContext(todo)
                 self.display.renderForm(true)
-                self.refreshDisplay()
+                self.refreshDisplay(undefined, self.findList(name, title))
               }
             },
           });
@@ -174,6 +178,9 @@ $(function() {
     updateTodo(id, data) {
       var self = this;
       var todo = self.lists.all.findTodo(id);
+
+      var name = $('div#items time').text()
+      var title = $('.active').closest('section').attr('class') === 'completed' ? 'Completed' : 'All Todos'
 
         $.ajax({
             url: `/api/todos/${id}`,
@@ -184,7 +191,7 @@ $(function() {
               if (xhr.status === 200) {
                 self.display.renderEditForm(true)
                 todo.update(data)
-                self.refreshDisplay()
+                self.refreshDisplay(undefined, self.findList(name, title))
               }
             },
           });
@@ -193,6 +200,8 @@ $(function() {
     completeTodo(id) {
       var self = this;
       var id = +id;
+      var name = $('div#items time').text()
+      var title = $('.active').closest('section').attr('class') === 'completed' ? 'Completed' : 'All Todos'
 
         $.ajax({
             url: `/api/todos/${id}`,
@@ -209,7 +218,8 @@ $(function() {
                 self.updateCurrentSection(self.context.selected)
                 self.display.markCompleted(id)
                 self.display.renderEditForm(true)
-                self.refreshDisplay()
+                debugger;
+                self.refreshDisplay(undefined, self.findList(name, title))
               }
             },
           });
@@ -428,7 +438,7 @@ $(function() {
       app.display.renderEditForm()
       return;
     }
-  });
+  }); // edit event
 
   $(document).on('click', '#sidebar header', function(e){
     var target = e.target
@@ -440,7 +450,7 @@ $(function() {
 
     var $start = (id === 'all' ? $('section#all') : $('.completed') )
     $start.find('header').addClass('active')
-  }); //highlight todo section header
+  }); // highlight todo section header
 
   $(document).on('click', '#sidebar article dl', function(e){
     e.preventDefault()
@@ -459,6 +469,6 @@ $(function() {
     app.refreshDisplay(undefined, app.findList(listName, header))
     var $start = (id === 'all' ? $('section#all') : $('.completed') )
     $start.find(`dl[data-title='${listName}']`).addClass('active')
-  }) // highlight todo date
+  })  // highlight todo date
 
 })
