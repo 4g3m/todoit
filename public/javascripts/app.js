@@ -12,7 +12,7 @@ $(function() {
     updateCurrentSection(list) {
       const obj = this.context.current_section
       obj.title = list.name
-      obj.data = list.length
+      obj.data = list.todos.length
       list.sort()
       if (list.name === 'Completed') {obj.data = this.lists.completed.length}
     } //context updater
