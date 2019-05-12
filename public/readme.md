@@ -1,7 +1,6 @@
 **Assumptions**
 
-
-if clicking under 'completed', choose done.
+No assumption written. Using this to brainstorm.
 
 ## Classes
 

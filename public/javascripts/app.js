@@ -101,7 +101,7 @@ $(function() {
 
     findList(name, title){
       switch (name) {
-        case 'All Lists':
+        case 'All Todos':
           return this.lists.all
         case 'Completed':
           return this.lists.completed
@@ -155,9 +155,6 @@ $(function() {
     newTodo(data) {
       var self = this
 
-      var name = $('div#items time').text()
-      var title = $('.active').closest('section').attr('class') === 'completed' ? 'Completed' : 'All Todos'
-
         $.ajax({
             url: '/api/todos',
             method: 'POST',
@@ -169,7 +166,8 @@ $(function() {
                 let todo = new Todo(...vals)
                 self.addContext(todo)
                 self.display.renderForm(true)
-                self.refreshDisplay(undefined, self.findList(name, title))
+                self.refreshDisplay() // sends back to all lists
+                $('#all_header').addClass('active') // highlight
               }
             },
           });
@@ -191,6 +189,14 @@ $(function() {
               if (xhr.status === 200) {
                 self.display.renderEditForm(true)
                 todo.update(data)
+
+                if (todo.completed) {
+                  self.lists.completed.addTodo(todo)
+                  self.context.done.push(todo)
+                }
+                self.lists.completed.todos = self.lists.completed.todos.filter(todo => todo.completed)
+                self.context.done = self.context.done.filter(todo => todo.completed)
+
                 self.refreshDisplay(undefined, self.findList(name, title))
               }
             },
@@ -212,13 +218,14 @@ $(function() {
               if (xhr.status === 200) {
                 console.log(json, 'completed request')
                 let todo = self.lists.all.findTodo(+json.id);
+
                 todo.markCompleted()
                 self.lists.completed.addTodo(todo)
                 self.context.done = self.lists.completed.todos
                 self.updateCurrentSection(self.context.selected)
                 self.display.markCompleted(id)
                 self.display.renderEditForm(true)
-                debugger;
+
                 self.refreshDisplay(undefined, self.findList(name, title))
               }
             },
@@ -226,6 +233,9 @@ $(function() {
     }
 
     deleteTodo(id) {
+      var name = $('div#items time').text()
+      var title = $('.active').closest('section').attr('class') === 'completed' ? 'Completed' : 'All Todos'
+
       id = +id
       var self = this
       $.ajax({
@@ -234,11 +244,13 @@ $(function() {
         success: function(data, respText, xhr) {
           if (xhr.status === 204) {
             self.lists.all.removeTodo(id)
+            self.lists.completed.todos = self.lists.completed.todos.filter((todo) => todo.id !== id)
             self.context.todos = self.context.todos.filter((todo) => todo.id !== id)
             self.context.done = self.context.done.filter((todo) => todo.id !== id)
+
             self.updateCurrentSection(self.context.selected)
             self.refreshSidebarLists()
-            self.refreshDisplay()
+            self.refreshDisplay(undefined, self.findList(name, title))
           };
         },
       });
@@ -316,7 +328,7 @@ $(function() {
 
     due_date(){
       const date = `${this.month}/${this.year}`
-      if (date === '/') {return "No Due Date"}
+      if (!this.month || !this.year) {return "No Due Date"}
       return date;
     }
 
@@ -394,6 +406,14 @@ $(function() {
     $('form').attr('method', 'post').removeAttr('data-id')
     app.display.renderForm();
   });
+
+  $(document).on('click', "tbody tr td.list_item", function(e){
+    var id = $(e.target).closest('tr').data('id');
+    var completed = $(e.target).find('input').attr('checked') === 'checked' ? false : true
+    var data = {id: id, completed: completed}
+
+    app.updateTodo(id, data)
+  }); // switch completed status on click
 
   $(document).on('click', "#modal_layer", function(e){
     var form = document.querySelector('#form_modal')
