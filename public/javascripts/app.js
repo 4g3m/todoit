@@ -406,14 +406,6 @@ $(function() {
     app.display.renderForm();
   });
 
-  $(document).on('click', "tbody tr td.list_item", function(e){
-    var id = $(e.target).closest('tr').data('id');
-    var completed = $(e.target).find('input').attr('checked') === 'checked' ? false : true
-    var data = {id: id, completed: completed}
-
-    app.updateTodo(id, data)
-  }); // switch completed status on click
-
   $(document).on('click', "#modal_layer", function(e){
     var form = document.querySelector('#form_modal')
     app.display.renderForm(true);
@@ -447,15 +439,18 @@ $(function() {
     e.preventDefault()
     let id = +$(this).closest('tr').data('id')
     let todo = app.lists.all.findTodo(id)
+    var completed = $(e.target).find('input').attr('checked') === 'checked' ? false : true
+    var data = {id: id, completed: completed}
 
     if (e.target.tagName === 'LABEL') {
-
       console.log(id, todo, 'edit clicked')
 
       $('form').attr('method', 'put').attr('data-id', id)
       app.display.populateForm(todo)
       app.display.renderEditForm()
       return;
+    } else {
+        app.updateTodo(id, data)
     }
   }); // edit event
 
