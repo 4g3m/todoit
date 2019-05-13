@@ -108,7 +108,13 @@ $(function() {
           return this.lists.completed
       }
 
-      var list = title === 'Completed'  ? this.context['done_todos_by_date'] : this.context['todos_by_date']
+      var list;
+      if (title === 'Completed') {
+        list = this.context['done_todos_by_date']
+        this.display.deleteIfUndone()
+      } else {
+        list = this.context['todos_by_date']
+      }
       return list[name]
     } // fetches List
 
@@ -195,6 +201,7 @@ $(function() {
                   self.lists.completed.addTodo(todo)
                   self.context.done.push(todo)
                 }
+
                 self.lists.completed.todos = self.lists.completed.todos.filter(todo => todo.completed)
                 self.context.done = self.context.done.filter(todo => todo.completed)
 
@@ -223,12 +230,11 @@ $(function() {
 
                 todo.markCompleted()
                 self.lists.completed.addTodo(todo)
-                self.context.done = self.lists.completed.todos
-                self.updateCurrentSection(self.context.selected)
                 self.display.markCompleted(id)
+                self.context.done = self.lists.completed.todos
+
                 self.display.renderEditForm(true)
                 self.refreshDisplay(undefined, self.findList(name, title))
-                $('tr')
               }
             },
           });
@@ -380,14 +386,18 @@ $(function() {
         if (!['All Todos', 'Completed'].includes(header)) {
             todos.each(function(idx, tr) {
                 var label = $(tr).find('label').text()
-                // debugger;
                 if (!label.includes(header)) { $(tr).remove() }
             });
         }; //delete todo t if not matching title
     }
 
-    deleteIfDoneMismatch(){
-
+    deleteIfUndone(){
+        setTimeout(function(){
+          $('tr').each(function(idx, tr){
+            var checked = $(tr).find('input').attr('checked')
+            if (!checked) {$(tr).remove()}
+          })
+        })
     }
 
     updateTodoCounter() {
@@ -492,9 +502,12 @@ $(function() {
     var target = e.target
     var listName = $(target).closest('header').data('title')
     $('.active').removeClass('active')
-    var id = $(target).closest('section').attr('id')
+    var $section = $(target).closest('section')
+    var id = $section.attr('id')
+    var title = $section.attr('class') === 'completed' ? 'Completed' : 'All Todos'
 
-    app.refreshDisplay(undefined, app.findList(listName))
+    var currentList = app.findList(listName, title)
+    app.refreshDisplay(undefined, currentList)
 
     var $start = (id === 'all' ? $('section#all') : $('.completed') )
     $start.find('header').addClass('active')
@@ -512,7 +525,6 @@ $(function() {
 
     var id = $(target).closest('section').attr('id')
     $('.active').removeClass('active')
-
 
     app.refreshDisplay(undefined, app.findList(listName, header))
     var $start = (id === 'all' ? $('section#all') : $('.completed') )
