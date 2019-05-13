@@ -97,6 +97,7 @@ $(function() {
       self.updateCurrentSection(list)
       self.updateSelected(list)
       self.display.refreshMain(context)
+      self.display.deleteIfDateMismatch()
     }
 
     findList(name, title){
@@ -199,7 +200,6 @@ $(function() {
 
                 var currentList = self.findList(name, title)
                 self.refreshDisplay(undefined, currentList)
-                self.display.deleteIfDateMismatch()
               }
             },
           });
@@ -227,8 +227,8 @@ $(function() {
                 self.updateCurrentSection(self.context.selected)
                 self.display.markCompleted(id)
                 self.display.renderEditForm(true)
-
                 self.refreshDisplay(undefined, self.findList(name, title))
+                $('tr')
               }
             },
           });
@@ -253,6 +253,7 @@ $(function() {
 
             var currentList = self.findList(name, title)
             self.refreshDisplay(undefined, currentList)
+            self.display.deleteTodoRow(id)
           };
         },
       });
@@ -367,19 +368,25 @@ $(function() {
       this.renderMain(json)
     }
 
+    deleteTodoRow(id){
+      $(`tr[data-id='${id}'`).remove()
+    }
+
     deleteIfDateMismatch() {
         var header = $('#items time').text()
+        if (!header.trim()) {return;}
+
         var todos = $('tr')
         if (!['All Todos', 'Completed'].includes(header)) {
             todos.each(function(idx, tr) {
                 var label = $(tr).find('label').text()
-                debugger;
+                // debugger;
                 if (!label.includes(header)) { $(tr).remove() }
             });
         }; //delete todo t if not matching title
     }
 
-    deleteTodoTR(){
+    deleteIfDoneMismatch(){
 
     }
 
