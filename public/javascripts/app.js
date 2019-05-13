@@ -197,7 +197,9 @@ $(function() {
                 self.lists.completed.todos = self.lists.completed.todos.filter(todo => todo.completed)
                 self.context.done = self.context.done.filter(todo => todo.completed)
 
-                self.refreshDisplay(undefined, self.findList(name, title))
+                var currentList = self.findList(name, title)
+                self.refreshDisplay(undefined, currentList)
+                self.display.deleteIfDateMismatch()
               }
             },
           });
@@ -248,8 +250,9 @@ $(function() {
             self.context.todos = self.context.todos.filter((todo) => todo.id !== id)
             self.context.done = self.context.done.filter((todo) => todo.id !== id)
 
-            self.refreshSidebarLists()
-            self.refreshDisplay(undefined, self.findList(name, title))
+
+            var currentList = self.findList(name, title)
+            self.refreshDisplay(undefined, currentList)
           };
         },
       });
@@ -364,6 +367,23 @@ $(function() {
       this.renderMain(json)
     }
 
+    deleteIfDateMismatch() {
+        var header = $('#items time').text()
+        var todos = $('tr')
+        if (!['No Due Date', 'Completed'].includes(header)) {
+            todos.each(function(idx, tr) {
+                var label = $(tr).find(label).text()
+                debugger;
+                if (!label.includes(header)) { $(tr).remove() }
+            });
+        }; //delete todo t if not matching title
+    }
+
+    updateTodoCounter() {
+      function func(){$('#items dd').text($('table tr').length)}
+      setTimeout(func, 100)
+    }
+
     renderForm(hide=false){
       var $formModal = $('#form_modal')
       var $modalLayer = $('#modal_layer')
@@ -398,12 +418,11 @@ $(function() {
   };
 
   var app = new TodoApp();
-  test = app;
+  test = app
 
   $(document).on('click', function(e){
-    function func(){$('#items dd').text($('table tr').length)}
-    setTimeout(func, 100)
-  }) // hot fix for count issue. logic is more entangled on TodoList.length incrementing incorrectly.
+    app.display.updateTodoCounter()
+  }) //temp hot fix for count issue. logic is more entangled on TodoList.length incrementing incorrectly.
 
   $(document).on('click', "label[for='new_item']", function(e){
     $('form').trigger('reset')
@@ -453,7 +472,6 @@ $(function() {
       $('form').attr('method', 'put').attr('data-id', id)
       app.display.populateForm(todo)
       app.display.renderEditForm()
-      return;
     } else {
         app.updateTodo(id, data)
     }
