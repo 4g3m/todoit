@@ -370,13 +370,17 @@ $(function() {
     deleteIfDateMismatch() {
         var header = $('#items time').text()
         var todos = $('tr')
-        if (!['No Due Date', 'Completed'].includes(header)) {
+        if (!['All Todos', 'Completed'].includes(header)) {
             todos.each(function(idx, tr) {
-                var label = $(tr).find(label).text()
+                var label = $(tr).find('label').text()
                 debugger;
                 if (!label.includes(header)) { $(tr).remove() }
             });
         }; //delete todo t if not matching title
+    }
+
+    deleteTodoTR(){
+
     }
 
     updateTodoCounter() {
