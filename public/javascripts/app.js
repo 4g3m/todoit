@@ -108,6 +108,7 @@ $(function() {
           return this.lists.completed
       }
 
+      //debugger;
       var list;
       if (title === 'Completed') {
         list = this.context['done_todos_by_date']
@@ -115,6 +116,7 @@ $(function() {
       } else {
         list = this.context['todos_by_date']
       }
+      console.log(list, title, name)
       return list[name]
     } // fetches List
 
@@ -188,6 +190,7 @@ $(function() {
 
       var name = $('div#items time').text()
       var title = $('.active').closest('section').attr('class') === 'completed' ? 'Completed' : 'All Todos'
+
         $.ajax({
             url: `/api/todos/${id}`,
             method: 'PUT',
@@ -196,8 +199,8 @@ $(function() {
             success: function(json, statusText, xhr) {
               if (xhr.status === 200) {
                 self.display.renderEditForm(true)
-                console.log('data', data, 'responseJson', json)
-                debugger;
+                // console.log('data', data, 'responseJson', json)
+
                 todo.update(json)
 
                 if (todo.completed) {
@@ -211,6 +214,9 @@ $(function() {
 
                 var currentList = self.findList(name, title)
                 self.refreshDisplay(undefined, currentList)
+
+                // highlight section after update below
+              $(`section${title === 'Completed' ? '.completed' : '#all'}`).find(`dl[data-title='${name}']`).addClass('active')
               }
             },
           });
