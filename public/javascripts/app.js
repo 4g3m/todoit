@@ -24,7 +24,7 @@ $(function() {
 
       var addCompletedTodo = function(todo) {
           var date;
-          if (todo.month && todo.year) {
+          if (todo.month && todo.year && todo.month !== '00' && todo.year !== '0000') {
             date = `${todo.month}/${todo.year}`
             if (!done.hasOwnProperty(date)) {
                var list = new TodoList(date)
@@ -45,7 +45,7 @@ $(function() {
        }
       var addGeneralTodo = function(todo){
           var date;
-          if (todo.month && todo.year) {
+          if (todo.month && todo.year && todo.month !== '00' && todo.year !== '0000') {
             date = `${todo.month}/${todo.year}`
             if (!notDone.hasOwnProperty(date)) {
                var list = new TodoList(date)
@@ -126,7 +126,8 @@ $(function() {
             if (name.includes('due_')) {name = name.replace(/due_/, '')}
             var val = inputObj.value;
             let invalidVal = ['day', 'month', 'year'].includes(val.toLowerCase())
-            if (invalidVal) {val = ''}
+            if (invalidVal) {val = '00'}
+            if (name === 'year') {'year'}
             obj[name] = val;
         });
         return obj;
@@ -187,7 +188,6 @@ $(function() {
 
       var name = $('div#items time').text()
       var title = $('.active').closest('section').attr('class') === 'completed' ? 'Completed' : 'All Todos'
-
         $.ajax({
             url: `/api/todos/${id}`,
             method: 'PUT',
@@ -196,13 +196,14 @@ $(function() {
             success: function(json, statusText, xhr) {
               if (xhr.status === 200) {
                 self.display.renderEditForm(true)
-                console.log(json)
+                console.log('data', data, 'responseJson', json)
                 debugger;
                 todo.update(json)
 
                 if (todo.completed) {
+
                   self.lists.completed.addTodo(todo)
-                  self.context.done.push(todo)
+                  if (!self.context.done.includes(todo)) {self.context.done.push(todo)}
                 }
 
                 self.lists.completed.todos = self.lists.completed.todos.filter(todo => todo.completed)
@@ -340,8 +341,11 @@ $(function() {
     }
 
     due_date(){
+      if (this.month == '00') {delete this.month}
+      if (this.day == '00') {delete this.day}
+      if (this.year == '0000') {delete this.year}
       const date = `${this.month}/${this.year}`
-      if (!this.month || !this.year) {return "No Due Date"}
+      if (!this.month || !this.year || this.month === '00' || this.year === '0000') {return "No Due Date"}
       return date;
     }
 
