@@ -180,23 +180,25 @@ $(function() {
           });
     }
 
-    updateTodo(id, reqData) {
+    updateTodo(id, data) {
       var self = this;
-      var todo = self.lists.all.findTodo(id);
+      var id = +id
+      var todo = self.lists.all.findTodo(+id);
 
       var name = $('div#items time').text()
       var title = $('.active').closest('section').attr('class') === 'completed' ? 'Completed' : 'All Todos'
-        console.log(reqData, 'request data')
+
         $.ajax({
             url: `/api/todos/${id}`,
             method: 'PUT',
-            data: reqData,
+            data: data,
             dataType: 'json',
-            success: function(responseData, statusText, xhr) {
-              debugger;
+            success: function(json, statusText, xhr) {
               if (xhr.status === 200) {
-                todo.update(responseData)
                 self.display.renderEditForm(true)
+                console.log(json)
+                debugger;
+                todo.update(json)
 
                 if (todo.completed) {
                   self.lists.completed.addTodo(todo)
@@ -276,6 +278,7 @@ $(function() {
     }
 
     addTodo(todo) {
+      if (this.todos.includes(todo)) {return;}
       this.todos.push(todo);
       this.sort()
       this.length += 1
@@ -347,11 +350,9 @@ $(function() {
     }
 
     update(data) {
-      var self = this
       for (let prop in data) {
-        self[prop] = data[prop]
-      };
-
+        this[prop] = data[prop]
+      }
     }
   }
 
@@ -442,7 +443,7 @@ $(function() {
   };
 
   var app = new TodoApp();
-  // test = app
+  test = app
 
   $(document).on('click', function(e){
     app.display.updateTodoCounter()
@@ -481,15 +482,14 @@ $(function() {
     const data = app.formToJSON($('form')[0]);
     let todo = app.lists.all.findTodo($('form').data('id'))
     app.completeTodo(todo.id)
-    console.log('complete button clicked')
   })
 
   $(document).on('click', 'tr td.list_item', function(e){
     e.preventDefault()
     let id = +$(this).closest('tr').data('id')
     let todo = app.lists.all.findTodo(id)
-    var completed = $(e.target).find('input').attr('checked') === 'checked' ? "" : false // not sure why this works when true. server-side issue?
-    var data = {completed: completed}
+    var completed = $(e.target).find('input').attr('checked') === 'checked' ? '' : false
+    var data = {id: id, completed: completed}
 
     if (e.target.tagName === 'LABEL') {
       console.log(id, todo, 'edit clicked')
@@ -498,7 +498,6 @@ $(function() {
       app.display.populateForm(todo)
       app.display.renderEditForm()
     } else {
-        console.log('toggle completed')
         app.updateTodo(id, data)
     }
   }); // edit event
