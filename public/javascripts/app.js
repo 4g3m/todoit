@@ -194,8 +194,8 @@ $(function() {
             dataType: 'json',
             success: function(json, statusText, xhr) {
               if (xhr.status === 200) {
+                todo.update(json)
                 self.display.renderEditForm(true)
-                todo.update(data)
 
                 if (todo.completed) {
                   self.lists.completed.addTodo(todo)
@@ -346,8 +346,9 @@ $(function() {
     }
 
     update(data) {
+      var self = this
       for (let prop in data) {
-        this[prop] = data[prop]
+        self[prop] = data[prop];
       }
     }
   }
